@@ -85,6 +85,8 @@ namespace map_creator.ViewModels
             }
         }
 
+
+
         // ===== OBIEKTY =====
         private ObjectInstance[,] _objectsGrid;
         public ObjectInstance[,] GetObjectsGrid() => _objectsGrid;
@@ -98,11 +100,19 @@ namespace map_creator.ViewModels
             set
             {
                 _selectedObject = value;
-                OnPropertyChanged();
-                OnPropertyChanged(nameof(SelectedObjectKey)); // ✅ TO NAPRAWIA PODŚWIETLANIE
-                if (_selectedObject != null) SelectedTile = null;
+
+                OnPropertyChanged(); // SelectedObject
+                OnPropertyChanged(nameof(SelectedObjectKey));
+
+                // 🔥 TEGO BRAKOWAŁO
+                OnPropertyChanged(nameof(IsSharkmanSelected));
+                OnPropertyChanged(nameof(IsCannonSelected));
+
+                if (_selectedObject != null)
+                    SelectedTile = null;
             }
         }
+
 
         // ✅ XAML trigger porównuje Key z SelectedObjectKey
         public string SelectedObjectKey => SelectedObject?.Key;
@@ -120,6 +130,13 @@ namespace map_creator.ViewModels
             get => _cannonDirection;
             set { _cannonDirection = value; OnPropertyChanged(); }
         }
+
+        public bool IsSharkmanSelected =>
+            SelectedObject?.Key == "sharkman";
+
+        public bool IsCannonSelected =>
+            SelectedObject?.Key == "cannon";
+
 
         // meta obrazków obiektów: key -> (src,w,h)
         private readonly Dictionary<string, (string src, int w, int h)> _objectMeta = new();
@@ -256,6 +273,8 @@ namespace map_creator.ViewModels
 
             return (c, offsetX);
         }
+
+
 
         public void PlaceObjectAt(double worldX, double worldY)
         {
@@ -557,6 +576,8 @@ namespace map_creator.ViewModels
             string json = $@"{{ ""width"":{Columns},""height"":{Rows},""tilewidth"":32,""tileheight"":32,""layers"":[{{""data"":{sb}}}] }}";
             File.WriteAllText(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), $"{MapName}.json"), json);
         }
+
+
 
         private void SaveObjectsJson()
         {

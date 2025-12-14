@@ -1,10 +1,12 @@
 ﻿using map_creator.ViewModels;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Shapes;
 
 namespace map_creator
 {
@@ -102,7 +104,55 @@ namespace map_creator
                     Canvas.SetTop(img, drawY);
                     Panel.SetZIndex(img, 10);
                     MapCanvas.Children.Add(img);
+
+                    // ===== SHARKMAN PATROL DISTANCE (STRZAŁKI) =====
+                    if (obj.Type == "Sharkman" && obj.PatrolDistance.HasValue && obj.PatrolDistance.Value > 0)
+                    {
+                        double pd = obj.PatrolDistance.Value;
+
+                        double y = anchorY - h / 2.0;
+
+                        // linia
+                        var line = new Line
+                        {
+                            X1 = anchorX - pd,
+                            X2 = anchorX + pd,
+                            Y1 = y,
+                            Y2 = y,
+                            Stroke = Brushes.Cyan,
+                            StrokeThickness = 2
+                        };
+                        Panel.SetZIndex(line, 5);
+                        MapCanvas.Children.Add(line);
+
+                        // strzałka lewa
+                        MapCanvas.Children.Add(new Polygon
+                        {
+                            Fill = Brushes.Cyan,
+                            Points = new PointCollection
+        {
+            new(anchorX - pd, y),
+            new(anchorX - pd + 6, y - 4),
+            new(anchorX - pd + 6, y + 4),
+        }
+                        });
+
+                        // strzałka prawa
+                        MapCanvas.Children.Add(new Polygon
+                        {
+                            Fill = Brushes.Cyan,
+                            Points = new PointCollection
+        {
+            new(anchorX + pd, y),
+            new(anchorX + pd - 6, y - 4),
+            new(anchorX + pd - 6, y + 4),
+        }
+                        });
+                    }
+
+
                 }
+
         }
 
         private void MapCanvas_MouseLeftButtonDown(object s, MouseButtonEventArgs e)

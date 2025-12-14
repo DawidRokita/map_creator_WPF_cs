@@ -17,6 +17,8 @@
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
         <local:ObjectEqualsConverter x:Key="ObjectEqualsConverter"/>
+        <local:StringEqualsConverter x:Key="StringEqualsConverter"/>
+
 
         <!-- Styl przycisków w pasku narzędzi kreatora -->
         <Style x:Key="EditorToolbarButton" TargetType="Button">
@@ -212,6 +214,7 @@
                                                   HorizontalScrollBarVisibility="Disabled"
                                                   Background="#262626"
                                                   CanContentScroll="False"
+                                                  MinWidth="200"
                                                   Visibility="{Binding IsTilesMode, Converter={StaticResource BoolToVis}}">
 
                                         <ItemsControl ItemsSource="{Binding TileGroups}">
@@ -279,78 +282,138 @@
                                     <Border Background="#262626"
                                             Padding="10"
                                             Visibility="{Binding IsObjectsMode, Converter={StaticResource BoolToVis}}">
+
                                         <ScrollViewer Background="#262626"
                                                       VerticalScrollBarVisibility="Auto"
                                                       Visibility="{Binding IsObjectsMode, Converter={StaticResource BoolToVis}}">
 
-                                            <ItemsControl ItemsSource="{Binding ObjectSections}">
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate>
+                                            <!-- ScrollViewer musi mieć TYLKO JEDNO dziecko -->
+                                            <StackPanel>
 
-                                                        <StackPanel Margin="0,0,0,16">
+                                                <!-- LISTA SEKCJI + IKONY -->
+                                                <ItemsControl ItemsSource="{Binding ObjectSections}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <StackPanel Margin="0,0,0,16">
 
-                                                            <!-- label -->
-                                                            <TextBlock Text="{Binding Label}"
-                                                                       Foreground="#aaa"
-                                                                       FontSize="13"
-                                                                       Margin="0,0,0,4"/>
+                                                                <TextBlock Text="{Binding Label}"
+                                                                           Foreground="#aaa"
+                                                                           FontSize="13"
+                                                                           Margin="0,0,0,4"/>
 
-                                                            <Border Height="1" Background="#333" Margin="0,0,0,6"/>
+                                                                <Border Height="1" Background="#333" Margin="0,0,0,6"/>
 
-                                                            <!-- items -->
-                                                            <ItemsControl ItemsSource="{Binding Items}">
-                                                                <ItemsControl.ItemsPanel>
-                                                                    <ItemsPanelTemplate>
-                                                                        <WrapPanel/>
-                                                                    </ItemsPanelTemplate>
-                                                                </ItemsControl.ItemsPanel>
+                                                                <ItemsControl ItemsSource="{Binding Items}">
+                                                                    <ItemsControl.ItemsPanel>
+                                                                        <ItemsPanelTemplate>
+                                                                            <WrapPanel/>
+                                                                        </ItemsPanelTemplate>
+                                                                    </ItemsControl.ItemsPanel>
 
-                                                                <ItemsControl.ItemTemplate>
-                                                                    <DataTemplate>
-                                                                        <Border Width="32"
-                                                                                Height="32"
-                                                                                Margin="2"
-                                                                                CornerRadius="4">
+                                                                    <ItemsControl.ItemTemplate>
+                                                                        <DataTemplate>
+                                                                            <Border Width="32"
+                                                                                    Height="32"
+                                                                                    Margin="2"
+                                                                                    CornerRadius="4">
 
-                                                                            <!-- ✅ podświetlenie WYBRANEGO OBIEKTU -->
-                                                                            <Border.Style>
-                                                                                <Style TargetType="Border">
-                                                                                    <Setter Property="Background" Value="Transparent"/>
-                                                                                    <Setter Property="BorderThickness" Value="0"/>
-                                                                                    <Style.Triggers>
-                                                                                        <DataTrigger Value="True">
-                                                                                            <DataTrigger.Binding>
-                                                                                                <MultiBinding Converter="{StaticResource ObjectEqualsConverter}">
-                                                                                                    <Binding Path="Key"/>
-                                                                                                    <Binding Path="DataContext.SelectedObjectKey"
-                                                                                                             RelativeSource="{RelativeSource AncestorType=Window}"/>
-                                                                                                </MultiBinding>
-                                                                                            </DataTrigger.Binding>
-                                                                                            <Setter Property="Background" Value="#3a5541"/>
-                                                                                            <Setter Property="BorderBrush" Value="#639d6d"/>
-                                                                                            <Setter Property="BorderThickness" Value="2"/>
-                                                                                        </DataTrigger>
-                                                                                    </Style.Triggers>
-                                                                                </Style>
-                                                                            </Border.Style>
+                                                                                <!-- podświetlenie WYBRANEGO OBIEKTU -->
+                                                                                <Border.Style>
+                                                                                    <Style TargetType="Border">
+                                                                                        <Setter Property="Background" Value="Transparent"/>
+                                                                                        <Setter Property="BorderThickness" Value="0"/>
+                                                                                        <Style.Triggers>
+                                                                                            <DataTrigger Value="True">
+                                                                                                <DataTrigger.Binding>
+                                                                                                    <MultiBinding Converter="{StaticResource ObjectEqualsConverter}">
+                                                                                                        <Binding Path="Key"/>
+                                                                                                        <Binding Path="DataContext.SelectedObjectKey"
+                                                                                                                 RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                                                                                    </MultiBinding>
+                                                                                                </DataTrigger.Binding>
+                                                                                                <Setter Property="Background" Value="#3a5541"/>
+                                                                                                <Setter Property="BorderBrush" Value="#639d6d"/>
+                                                                                                <Setter Property="BorderThickness" Value="2"/>
+                                                                                            </DataTrigger>
+                                                                                        </Style.Triggers>
+                                                                                    </Style>
+                                                                                </Border.Style>
 
-                                                                            <Border.InputBindings>
-                                                                                <MouseBinding MouseAction="LeftClick"
-                                                                                              Command="{Binding DataContext.SelectObjectCommand,
-                                                                                              RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                                              CommandParameter="{Binding}"/>
-                                                                            </Border.InputBindings>
+                                                                                <Border.InputBindings>
+                                                                                    <MouseBinding MouseAction="LeftClick"
+                                                                                                  Command="{Binding DataContext.SelectObjectCommand,
+                                                                                                  RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                                                  CommandParameter="{Binding}"/>
+                                                                                </Border.InputBindings>
 
-                                                                            <Image Source="{Binding IconSrc}" Stretch="Uniform"/>
-                                                                        </Border>
-                                                                    </DataTemplate>
-                                                                </ItemsControl.ItemTemplate>
-                                                            </ItemsControl>
-                                                        </StackPanel>
+                                                                                <Image Source="{Binding IconSrc}" Stretch="Uniform"/>
+                                                                            </Border>
+                                                                        </DataTemplate>
+                                                                    </ItemsControl.ItemTemplate>
+                                                                </ItemsControl>
 
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
+                                                            </StackPanel>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                                <!-- ================= SHARKMAN ================= -->
+                                                <StackPanel Margin="0,8,0,0"
+                                                            Visibility="{Binding DataContext.IsSharkmanSelected,
+                                                                         RelativeSource={RelativeSource AncestorType=Window},
+                                                                         Converter={StaticResource BoolToVis}}">
+
+                                                    <TextBlock Text="Sharkman patrol distance"
+                                                               Foreground="#ccc"
+                                                               FontSize="13"
+                                                               Margin="0,0,0,4"/>
+
+                                                    <Slider Minimum="0"
+                                                            Maximum="300"
+                                                            TickFrequency="10"
+                                                            IsSnapToTickEnabled="True"
+                                                            Value="{Binding DataContext.DefaultSharkmanPatrolDistance,
+                                                                            RelativeSource={RelativeSource AncestorType=Window}}"/>
+
+                                                    <TextBlock Text="{Binding DataContext.DefaultSharkmanPatrolDistance,
+                                                                              RelativeSource={RelativeSource AncestorType=Window},
+                                                                              StringFormat='{}{0} px'}"
+                                                               Foreground="#999"
+                                                               FontSize="11"
+                                                               HorizontalAlignment="Center"/>
+                                                </StackPanel>
+
+                                                <!-- ================= CANNON ================= -->
+                                                <StackPanel Margin="0,8,0,0"
+                                                            Visibility="{Binding DataContext.IsCannonSelected,
+                                                                         RelativeSource={RelativeSource AncestorType=Window},
+                                                                         Converter={StaticResource BoolToVis}}">
+
+                                                    <TextBlock Text="Cannon direction"
+                                                               Foreground="#ccc"
+                                                               FontSize="13"
+                                                               Margin="0,0,0,6"/>
+
+                                                    <StackPanel Orientation="Horizontal"
+                                                                HorizontalAlignment="Center">
+
+                                                        <RadioButton Content="LEFT"
+                                                                     GroupName="CannonDir"
+                                                                     IsChecked="{Binding DataContext.CannonDirection,
+                                                                                 RelativeSource={RelativeSource AncestorType=Window},
+                                                                                 Converter={StaticResource StringEqualsConverter},
+                                                                                 ConverterParameter=LEFT}"/>
+
+                                                        <RadioButton Content="RIGHT"
+                                                                     GroupName="CannonDir"
+                                                                     IsChecked="{Binding DataContext.CannonDirection,
+                                                                                 RelativeSource={RelativeSource AncestorType=Window},
+                                                                                 Converter={StaticResource StringEqualsConverter},
+                                                                                 ConverterParameter=RIGHT}"/>
+
+                                                    </StackPanel>
+                                                </StackPanel>
+
+                                            </StackPanel>
                                         </ScrollViewer>
                                     </Border>
 
