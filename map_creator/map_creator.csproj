@@ -10,10 +10,54 @@
 
   <ItemGroup>
     <None Remove="Assets\logo.png" />
+    <None Remove="tiles\icons\enemies\Crabby.png" />
+    <None Remove="tiles\icons\enemies\Sharkman.png" />
+    <None Remove="tiles\icons\objects\Cannon.png" />
+    <None Remove="tiles\icons\objects\Spikes.png" />
+    <None Remove="tiles\icons\pickables\Diamond.png" />
+    <None Remove="tiles\icons\pickables\GoldCoin.png" />
+    <None Remove="tiles\icons\pickables\GoldenSkull.png" />
+    <None Remove="tiles\icons\pickables\HealthPotion.png" />
+    <None Remove="tiles\icons\pickables\SilverCoin.png" />
+    <None Remove="tiles\icons\special\Finish.png" />
+    <None Remove="tiles\icons\special\Player.png" />
   </ItemGroup>
 
   <ItemGroup>
     <Content Include="Assets\logo.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="tiles\icons\enemies\Crabby.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="tiles\icons\enemies\Sharkman.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="tiles\icons\objects\Cannon.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="tiles\icons\objects\Spikes.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="tiles\icons\pickables\Diamond.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="tiles\icons\pickables\GoldCoin.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="tiles\icons\pickables\GoldenSkull.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="tiles\icons\pickables\HealthPotion.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="tiles\icons\pickables\SilverCoin.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="tiles\icons\special\Finish.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="tiles\icons\special\Player.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
