@@ -79,7 +79,7 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- 🔹 TOP BAR – IDENTYCZNY -->
+        <!-- TOP BAR -->
         <Border Grid.Row="0"
                 Background="#1c1c1c"
                 BorderBrush="#222"
@@ -96,14 +96,29 @@
                     <TextBlock Text="⚙️" FontSize="20" Foreground="White"/>
                 </Button>
 
-                <Button DockPanel.Dock="Right"
-                        Width="36"
-                        Height="36"
-                        Margin="5,0,0,0"
-                        Background="Transparent"
-                        BorderThickness="0">
-                    <TextBlock Text="👤" FontSize="20" Foreground="White" />
+                <Button x:Name="UserButton"
+        DockPanel.Dock="Right"
+        Width="36"
+        Height="36"
+        Margin="5,0,0,0"
+        Background="Transparent"
+        BorderThickness="0"
+        Click="UserButton_Click">
+
+                    <Button.ContextMenu>
+                        <ContextMenu x:Name="UserContextMenu">
+                            <MenuItem Header="Wyloguj"
+                      Click="LogoutMenuItem_Click"/>
+                        </ContextMenu>
+                    </Button.ContextMenu>
+
+                    <TextBlock Text="👤"
+               FontSize="20"
+               Foreground="White"/>
                 </Button>
+
+
+
 
                 <StackPanel Orientation="Horizontal"
                             DockPanel.Dock="Left"
@@ -398,6 +413,7 @@
 
                                                         <RadioButton Content="LEFT"
                                                                      GroupName="CannonDir"
+                                                                     Foreground="#ccc"
                                                                      IsChecked="{Binding DataContext.CannonDirection,
                                                                                  RelativeSource={RelativeSource AncestorType=Window},
                                                                                  Converter={StaticResource StringEqualsConverter},
@@ -405,6 +421,7 @@
 
                                                         <RadioButton Content="RIGHT"
                                                                      GroupName="CannonDir"
+                                                                     Foreground="#ccc"
                                                                      IsChecked="{Binding DataContext.CannonDirection,
                                                                                  RelativeSource={RelativeSource AncestorType=Window},
                                                                                  Converter={StaticResource StringEqualsConverter},

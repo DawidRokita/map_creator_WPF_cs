@@ -113,6 +113,44 @@ namespace map_creator.ViewModels
             }
         }
 
+        private ObjectInstance _selectedPlacedObject;
+        public ObjectInstance SelectedPlacedObject
+        {
+            get => _selectedPlacedObject;
+            set
+            {
+                _selectedPlacedObject = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsSharkmanPlacedSelected));
+                OnPropertyChanged(nameof(IsCannonPlacedSelected));
+            }
+        }
+
+        public bool IsSharkmanPlacedSelected =>
+            SelectedPlacedObject?.Key == "sharkman";
+
+        public bool IsCannonPlacedSelected =>
+            SelectedPlacedObject?.Key == "cannon";
+
+        public void SelectObjectAt(double x, double y)
+        {
+            var hit = FindObjectAtPosition(x, y);
+            if (hit == null)
+            {
+                SelectedPlacedObject = null;
+                return;
+            }
+
+            SelectedPlacedObject = hit.Value.obj;
+
+            // synchronizacja UI
+            if (SelectedPlacedObject.PatrolDistance != null)
+                DefaultSharkmanPatrolDistance = SelectedPlacedObject.PatrolDistance.Value;
+
+            if (!string.IsNullOrEmpty(SelectedPlacedObject.Direction))
+                CannonDirection = SelectedPlacedObject.Direction;
+        }
+
 
         // ✅ XAML trigger porównuje Key z SelectedObjectKey
         public string SelectedObjectKey => SelectedObject?.Key;
@@ -121,15 +159,42 @@ namespace map_creator.ViewModels
         public int DefaultSharkmanPatrolDistance
         {
             get => _defaultSharkmanPatrolDistance;
-            set { _defaultSharkmanPatrolDistance = value; OnPropertyChanged(); }
+            set
+            {
+                _defaultSharkmanPatrolDistance = value;
+                OnPropertyChanged();
+
+                if (SelectedPlacedObject?.Key == "sharkman")
+                {
+                    SelectedPlacedObject.PatrolDistance = value;
+                    RequestRender?.Invoke();
+                }
+            }
         }
+
+        public void InvalidateRender()
+        {
+            RequestRender?.Invoke();
+        }
+
 
         private string _cannonDirection = "LEFT";
         public string CannonDirection
         {
             get => _cannonDirection;
-            set { _cannonDirection = value; OnPropertyChanged(); }
+            set
+            {
+                _cannonDirection = value;
+                OnPropertyChanged();
+
+                if (SelectedPlacedObject?.Key == "cannon")
+                {
+                    SelectedPlacedObject.Direction = value;
+                    RequestRender?.Invoke();
+                }
+            }
         }
+
 
         public bool IsSharkmanSelected =>
             SelectedObject?.Key == "sharkman";
@@ -564,32 +629,143 @@ namespace map_creator.ViewModels
 
         private void SaveMapJson()
         {
-            var sb = new StringBuilder("[\n");
+            var sb = new StringBuilder();
+
+            sb.AppendLine("{");
+            sb.AppendLine("  \"version\": 1.1,");
+            sb.AppendLine("  \"tiledversion\": \"1.11.5\",");
+            sb.AppendLine("  \"orientation\": \"orthogonal\",");
+            sb.AppendLine("  \"renderorder\": \"right-down\",");
+            sb.AppendLine($"  \"width\": {Columns},");
+            sb.AppendLine($"  \"height\": {Rows},");
+            sb.AppendLine("  \"tilewidth\": 32,");
+            sb.AppendLine("  \"tileheight\": 32,");
+            sb.AppendLine("  \"infinite\": false,");
+            sb.AppendLine("  \"nextobjectid\": 1,");
+            sb.AppendLine("  \"layers\": [");
+            sb.AppendLine("    {");
+            sb.AppendLine("      \"name\": \"Walls\",");
+            sb.AppendLine("      \"type\": \"tilelayer\",");
+            sb.AppendLine("      \"visible\": true,");
+            sb.AppendLine("      \"opacity\": 1,");
+            sb.AppendLine("      \"x\": 0,");
+            sb.AppendLine("      \"y\": 0,");
+            sb.AppendLine($"      \"width\": {Columns},");
+            sb.AppendLine($"      \"height\": {Rows},");
+            sb.AppendLine("      \"data\": [");
+
+            // 🔹 DATA – formatowana w wierszach jak siatka
             for (int r = 0; r < Rows; r++)
             {
-                sb.Append("  ");
-                sb.Append(string.Join(",", Enumerable.Range(0, Columns).Select(c => _grid[r, c])));
-                sb.AppendLine(r < Rows - 1 ? "," : "");
-            }
-            sb.Append("]");
+                sb.Append("        ");
 
-            string json = $@"{{ ""width"":{Columns},""height"":{Rows},""tilewidth"":32,""tileheight"":32,""layers"":[{{""data"":{sb}}}] }}";
-            File.WriteAllText(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), $"{MapName}.json"), json);
+                for (int c = 0; c < Columns; c++)
+                {
+                    sb.Append(_grid[r, c]);
+
+                    if (!(r == Rows - 1 && c == Columns - 1))
+                        sb.Append(",");
+                }
+
+                sb.AppendLine();
+            }
+
+            sb.AppendLine("      ]");
+            sb.AppendLine("    }");
+            sb.AppendLine("  ],");
+            sb.AppendLine("  \"tilesets\": [");
+            sb.AppendLine("    {");
+            sb.AppendLine("      \"firstgid\": 1,");
+            sb.AppendLine("      \"source\": \"../../tileset.xml\"");
+            sb.AppendLine("    }");
+            sb.AppendLine("  ]");
+            sb.AppendLine("}");
+
+            File.WriteAllText(
+                Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
+                    $"{MapName}.json"
+                ),
+                sb.ToString()
+            );
         }
+
+
 
 
 
         private void SaveObjectsJson()
         {
-            var dto = new ObjectsDto();
+            var sb = new StringBuilder();
             int mapHeight = Rows * CellSize;
+
+            sb.AppendLine("{");
+
+            // ========= PLAYER =========
+            var player = FindSingle("player");
+            if (player != null)
+            {
+                sb.AppendLine("  \"player\": {");
+                sb.AppendLine($"    \"x\": {player.Value.x},");
+                sb.AppendLine($"    \"y\": {player.Value.y}");
+                sb.AppendLine("  },");
+            }
+            else
+            {
+                sb.AppendLine("  \"player\": null,");
+            }
+
+            // ========= ENEMIES =========
+            sb.AppendLine("  \"enemies\": [");
+            WriteObjects(sb, "enemies", mapHeight);
+            sb.AppendLine("  ],");
+
+            // ========= PICKABLES =========
+            sb.AppendLine("  \"pickables\": [");
+            WriteObjects(sb, "pickables", mapHeight);
+            sb.AppendLine("  ],");
+
+            // ========= OBJECTS =========
+            sb.AppendLine("  \"objects\": [");
+            WriteObjects(sb, "objects", mapHeight);
+            sb.AppendLine("  ],");
+
+            // ========= FINISH =========
+            var finish = FindSingle("finish");
+            if (finish != null)
+            {
+                sb.AppendLine("  \"finish\": {");
+                sb.AppendLine($"    \"x\": {finish.Value.x},");
+                sb.AppendLine($"    \"y\": {finish.Value.y}");
+                sb.AppendLine("  }");
+            }
+            else
+            {
+                sb.AppendLine("  \"finish\": null");
+            }
+
+            sb.AppendLine("}");
+
+            File.WriteAllText(
+                Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
+                    $"{MapName}_objects.json"
+                ),
+                sb.ToString()
+            );
+        }
+
+        private void WriteObjects(StringBuilder sb, string category, int mapHeight)
+        {
+            bool first = true;
 
             for (int r = 0; r < Rows; r++)
             {
                 for (int c = 0; c < Columns; c++)
                 {
                     var obj = _objectsGrid[r, c];
-                    if (obj == null) continue;
+                    if (obj == null || obj.Category != category)
+                        continue;
 
                     var meta = GetObjectMeta(obj.Key);
                     int h = meta?.h ?? CellSize;
@@ -604,41 +780,66 @@ namespace map_creator.ViewModels
                     double centerYTop = anchorY - h / 2.0;
                     double centerY = mapHeight - centerYTop;
 
-                    if (obj.Category == "special")
-                    {
-                        if (obj.Type == "Player")
-                            dto.player = new XY { x = centerX, y = centerY };
-                        else if (obj.Type == "Finish")
-                        {
-                            int hh = meta?.h ?? CellSize;
-                            double y = centerY;
-                            if (hh > CellSize) y -= (hh - CellSize) / 2.0;
-                            dto.finish = new XY { x = centerX, y = y };
-                        }
-                    }
-                    else if (obj.Category == "enemies")
-                    {
-                        var e = new EnemyObj { type = obj.Type, x = centerX, y = centerY };
-                        if (obj.PatrolDistance != null) e.patrol_distance = obj.PatrolDistance.Value;
-                        dto.enemies.Add(e);
-                    }
-                    else if (obj.Category == "pickables")
-                    {
-                        dto.pickables.Add(new SimpleObj { type = obj.Type, x = centerX, y = centerY });
-                    }
-                    else if (obj.Category == "objects")
-                    {
-                        var o = new ObjWithDir { type = obj.Type, x = centerX, y = centerY };
-                        if (!string.IsNullOrEmpty(obj.Direction)) o.direction = obj.Direction;
-                        dto.objects.Add(o);
-                    }
+                    if (!first)
+                        sb.AppendLine(",");
+
+                    first = false;
+
+                    sb.AppendLine("    {");
+                    sb.AppendLine($"      \"type\": \"{obj.Type}\",");
+                    sb.AppendLine($"      \"x\": {centerX},");
+                    sb.AppendLine($"      \"y\": {centerY}");
+
+                    // ✅ OPCJONALNE POLA NA KOŃCU
+                    if (obj.PatrolDistance != null)
+                        sb.AppendLine($",      \"patrol_distance\": {obj.PatrolDistance}");
+
+                    if (!string.IsNullOrEmpty(obj.Direction))
+                        sb.AppendLine($",      \"direction\": \"{obj.Direction}\"");
+
+                    sb.Append("    }");
                 }
             }
 
-            var json = JsonSerializer.Serialize(dto, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
-                $"{MapName}_objects.json"), json);
+            sb.AppendLine();
         }
+
+
+        private (double x, double y)? FindSingle(string key)
+        {
+            int mapHeight = Rows * CellSize;
+
+            for (int r = 0; r < Rows; r++)
+            {
+                for (int c = 0; c < Columns; c++)
+                {
+                    var obj = _objectsGrid[r, c];
+                    if (obj == null || obj.Key != key) continue;
+
+                    var meta = GetObjectMeta(obj.Key);
+                    int h = meta?.h ?? CellSize;
+
+                    double tileX = c * CellSize;
+                    double tileY = r * CellSize;
+
+                    double anchorX = tileX + CellSize / 2.0 + obj.OffsetX;
+                    double anchorY = tileY + CellSize;
+
+                    double centerYTop = anchorY - h / 2.0;
+                    double centerY = mapHeight - centerYTop;
+
+                    if (key == "finish")
+                    {
+                        centerY = Math.Round(centerY);
+                    }
+
+                    return (anchorX, centerY);
+                }
+            }
+            return null;
+        }
+
+
 
         private class ObjectsDto
         {

@@ -7,6 +7,7 @@
         Background="#151515"
         WindowStartupLocation="CenterScreen">
 
+    
     <Grid Background="#151515">
         <!-- Panel wyśrodkowany -->
         <Viewbox Stretch="Uniform"
@@ -17,7 +18,7 @@
                     CornerRadius="12"
                     BorderBrush="#222"
                     BorderThickness="1"
-                    Padding="40"
+                    Padding="0"
                     Width="600"
                     Height="500"
                     Margin="100"
@@ -53,25 +54,61 @@
                                 HorizontalAlignment="Center"
                                 Width="320">
 
-                        <TextBox x:Name="UsernameTextBox"
-                                 Background="#252525"
-                                 Foreground="White"
-                                 BorderBrush="#333"
-                                 BorderThickness="1"
-                                 Padding="8,5"
-                                 FontSize="14"
-                                 Margin="0,0,0,12"
-                                 ToolTip="Nazwa użytkownika"/>
-
-                        <PasswordBox x:Name="PasswordBox"
+                        <Grid>
+                            <TextBox x:Name="UsernameTextBox"
                                      Background="#252525"
                                      Foreground="White"
                                      BorderBrush="#333"
                                      BorderThickness="1"
-                                     Padding="8,5"
-                                     FontSize="14"
-                                     Margin="0,0,0,20"
-                                     ToolTip="Hasło"/>
+                                     Padding="5"
+                                     Margin="0 5 0 5"
+                                     VerticalContentAlignment="Center"
+                                     Height="40"
+                                     FontSize="14"/>
+
+                            <TextBlock Text="Nazwa użytkownika"
+                                       Margin="10,0,0,0"
+                                       VerticalAlignment="Center"
+                                       Foreground="#777"
+                                       FontSize="14"
+                                       IsHitTestVisible="False">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Text, ElementName=UsernameTextBox}"
+                                                         Value="">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
+
+
+                        <Grid>
+                            <PasswordBox x:Name="PasswordBox"
+                                         Background="#252525"
+                                         Foreground="White"
+                                         BorderBrush="#333"
+                                         BorderThickness="1"
+                                         Padding="5"
+                                         FontSize="14"
+                                         Margin="0 5 0 5"
+                                         VerticalContentAlignment="Center"
+                                         Height="40"
+                                         PasswordChanged="PasswordBox_PasswordChanged"/>
+
+                            <TextBlock x:Name="PasswordPlaceholder"
+                                       Text="Hasło"
+                                       Margin="10,0,0,0"
+                                       FontSize="14"
+                                       VerticalAlignment="Center"
+                                       Foreground="#777"
+                                       IsHitTestVisible="False"/>
+                        </Grid>
+
 
                         <Button Content="Zaloguj się"
                                 Click="LoginButton_Click"
@@ -81,7 +118,18 @@
                                 BorderThickness="0"
                                 Padding="10"
                                 Cursor="Hand"
+                                Margin="0,8,0,8"/>
+
+                        <Button Content="Zarejestruj się"
+                                Click="RegisterButton_Click"
+                                Background="#444"
+                                Foreground="White"
+                                BorderThickness="0"
+                                Padding="10"
+                                Cursor="Hand"
                                 Margin="0,0,0,8"/>
+
+
 
                         <Button Content="Wejdź bez logowania"
                                 Click="SkipLoginButton_Click"

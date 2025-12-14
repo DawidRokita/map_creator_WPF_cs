@@ -7,6 +7,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using map_creator.Session;
 
 namespace map_creator
 {
@@ -16,6 +17,8 @@ namespace map_creator
         private bool _erase;
         private MainViewModel VM;
 
+
+
         public MainWindow()
         {
             InitializeComponent();
@@ -23,6 +26,11 @@ namespace map_creator
             VM.RequestRender += Render;
             Loaded += (_, _) => Render();
         }
+
+        private ObjectInstance _draggedObject;
+        private int _dragStartRow;
+        private int _dragStartCol;
+
 
         private void Render()
         {
@@ -105,64 +113,154 @@ namespace map_creator
                     Panel.SetZIndex(img, 10);
                     MapCanvas.Children.Add(img);
 
-                    // ===== SHARKMAN PATROL DISTANCE (STRZAŁKI) =====
-                    if (obj.Type == "Sharkman" && obj.PatrolDistance.HasValue && obj.PatrolDistance.Value > 0)
+                    // ===== SHARKMAN PATROL DISTANCE (NIEBIESKIE STRZAŁKI) =====
+                    if (obj.Type == "Sharkman" && obj.PatrolDistance.HasValue)
                     {
-                        double pd = obj.PatrolDistance.Value;
+                        double dist = obj.PatrolDistance.Value;
 
-                        double y = anchorY - h / 2.0;
+                        double centerY = anchorY - h / 2.0;
+                        double leftX = anchorX - dist;
+                        double rightX = anchorX + dist;
 
-                        // linia
-                        var line = new Line
+                        Brush arrowBrush = new SolidColorBrush(Color.FromRgb(80, 170, 255));
+                        double arrowSize = 6;
+
+                        // linia lewa
+                        var leftLine = new Line
                         {
-                            X1 = anchorX - pd,
-                            X2 = anchorX + pd,
-                            Y1 = y,
-                            Y2 = y,
-                            Stroke = Brushes.Cyan,
+                            X1 = anchorX,
+                            Y1 = centerY,
+                            X2 = leftX,
+                            Y2 = centerY,
+                            Stroke = arrowBrush,
                             StrokeThickness = 2
                         };
-                        Panel.SetZIndex(line, 5);
-                        MapCanvas.Children.Add(line);
 
-                        // strzałka lewa
-                        MapCanvas.Children.Add(new Polygon
+                        // grot ←
+                        var leftArrow1 = new Line
                         {
-                            Fill = Brushes.Cyan,
-                            Points = new PointCollection
-        {
-            new(anchorX - pd, y),
-            new(anchorX - pd + 6, y - 4),
-            new(anchorX - pd + 6, y + 4),
-        }
-                        });
+                            X1 = leftX,
+                            Y1 = centerY,
+                            X2 = leftX + arrowSize,
+                            Y2 = centerY - arrowSize,
+                            Stroke = arrowBrush,
+                            StrokeThickness = 2
+                        };
 
-                        // strzałka prawa
-                        MapCanvas.Children.Add(new Polygon
+                        var leftArrow2 = new Line
                         {
-                            Fill = Brushes.Cyan,
-                            Points = new PointCollection
-        {
-            new(anchorX + pd, y),
-            new(anchorX + pd - 6, y - 4),
-            new(anchorX + pd - 6, y + 4),
-        }
-                        });
+                            X1 = leftX,
+                            Y1 = centerY,
+                            X2 = leftX + arrowSize,
+                            Y2 = centerY + arrowSize,
+                            Stroke = arrowBrush,
+                            StrokeThickness = 2
+                        };
+
+                        // linia prawa
+                        var rightLine = new Line
+                        {
+                            X1 = anchorX,
+                            Y1 = centerY,
+                            X2 = rightX,
+                            Y2 = centerY,
+                            Stroke = arrowBrush,
+                            StrokeThickness = 2
+                        };
+
+                        // grot →
+                        var rightArrow1 = new Line
+                        {
+                            X1 = rightX,
+                            Y1 = centerY,
+                            X2 = rightX - arrowSize,
+                            Y2 = centerY - arrowSize,
+                            Stroke = arrowBrush,
+                            StrokeThickness = 2
+                        };
+
+                        var rightArrow2 = new Line
+                        {
+                            X1 = rightX,
+                            Y1 = centerY,
+                            X2 = rightX - arrowSize,
+                            Y2 = centerY + arrowSize,
+                            Stroke = arrowBrush,
+                            StrokeThickness = 2
+                        };
+
+                        Panel.SetZIndex(leftLine, 5);
+                        Panel.SetZIndex(rightLine, 5);
+
+                        MapCanvas.Children.Add(leftLine);
+                        MapCanvas.Children.Add(leftArrow1);
+                        MapCanvas.Children.Add(leftArrow2);
+
+                        MapCanvas.Children.Add(rightLine);
+                        MapCanvas.Children.Add(rightArrow1);
+                        MapCanvas.Children.Add(rightArrow2);
                     }
+
+
 
 
                 }
 
         }
 
+
+
+        private void LogoutMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            // wyczyść sesję
+            UserSession.Logout();
+
+            // otwórz okno logowania
+            var login = new LoginWindow();
+            login.Show();
+
+            // zamknij główne okno
+            this.Close();
+        }
+
+        private void UserButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.ContextMenu != null)
+            {
+                btn.ContextMenu.PlacementTarget = btn;
+                btn.ContextMenu.Placement =
+                    System.Windows.Controls.Primitives.PlacementMode.Bottom;
+                btn.ContextMenu.IsOpen = true;
+            }
+        }
+
+
+
         private void MapCanvas_MouseLeftButtonDown(object s, MouseButtonEventArgs e)
         {
+            var p = e.GetPosition(MapCanvas);
+
+            if (VM.IsObjectsMode)
+            {
+                var hit = VM.FindObjectAtPosition(p.X, p.Y);
+                if (hit != null)
+                {
+                    _draggedObject = hit.Value.obj;
+                    _dragStartRow = hit.Value.r;
+                    _dragStartCol = hit.Value.c;
+
+                    VM.SelectObjectAt(p.X, p.Y);
+                    MapCanvas.CaptureMouse();
+                    return;
+                }
+            }
+
             _painting = true;
             _erase = false;
-
-            PaintOrErase(e.GetPosition(MapCanvas));
+            PaintOrErase(p);
             MapCanvas.CaptureMouse();
         }
+
 
         private void MapCanvas_MouseRightButtonDown(object s, MouseButtonEventArgs e)
         {
@@ -177,16 +275,45 @@ namespace map_creator
 
         private void MapCanvas_MouseMove(object s, MouseEventArgs e)
         {
-            if (!_painting) return;
-            PaintOrErase(e.GetPosition(MapCanvas));
+            var p = e.GetPosition(MapCanvas);
+
+            if (_draggedObject != null)
+            {
+                int r = (int)(p.Y / MainViewModel.CellSize);
+                int c = (int)(p.X / MainViewModel.CellSize);
+
+                if (r < 0 || c < 0 || r >= VM.Rows || c >= VM.Columns)
+                    return;
+
+                var grid = VM.GetObjectsGrid();
+
+                if (grid[r, c] == null)
+                {
+                    grid[_dragStartRow, _dragStartCol] = null;
+                    grid[r, c] = _draggedObject;
+
+                    _dragStartRow = r;
+                    _dragStartCol = c;
+
+                    VM.InvalidateRender();
+
+                }
+                return;
+            }
+
+            if (_painting)
+                PaintOrErase(p);
         }
+
 
         private void MapCanvas_MouseLeftButtonUp(object s, MouseButtonEventArgs e)
         {
             _painting = false;
+            _draggedObject = null;
             _erase = false;
             MapCanvas.ReleaseMouseCapture();
         }
+
 
         private void MapCanvas_MouseRightButtonUp(object s, MouseButtonEventArgs e)
         {
