@@ -639,6 +639,12 @@
                                             </StackPanel>
 
                                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                <Button Content="Pokaż/Edytuj"
+                                                        Style="{StaticResource EditorToolbarButton}"
+                                                        Command="{Binding DataContext.OpenMapInEditorCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}"
+                                                        Margin="0,0,0,8"/>
+                                                
                                                 <Button Content="Pobierz"
                                                         Style="{StaticResource EditorToolbarButton}"
                                                         Command="{Binding DataContext.DownloadMapCommand, RelativeSource={RelativeSource AncestorType=Window}}"
@@ -649,6 +655,9 @@
                                                         Style="{StaticResource EditorToolbarButtonGreen}"
                                                         Command="{Binding DataContext.ToggleSaveMapCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                         CommandParameter="{Binding}"/>
+                                                
+
+
                                             </StackPanel>
                                         </Grid>
 

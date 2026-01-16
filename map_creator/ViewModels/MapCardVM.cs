@@ -35,5 +35,7 @@ namespace map_creator.ViewModels
             MapsJson = row.MapsJson;
             ObjectJson = row.ObjectJson;
         }
+
+
     }
 }

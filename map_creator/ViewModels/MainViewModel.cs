@@ -20,6 +20,8 @@ namespace map_creator.ViewModels
     {
         // ===== STAŁE =====
         public const int CellSize = 32;
+        public ICommand OpenMapInEditorCommand { get; }
+
 
         private readonly int[] EMPTY_TILE_IDS =
         {
@@ -301,6 +303,9 @@ namespace map_creator.ViewModels
             RefreshBrowseMapsCommand = new RelayCommand(_ => RefreshBrowseMaps());
             DownloadMapCommand = new RelayCommand(m => DownloadMap((MapCardVM)m));
             ToggleSaveMapCommand = new RelayCommand(m => ToggleSaveMap((MapCardVM)m));
+
+            OpenMapInEditorCommand = new RelayCommand(m => OpenMapInEditor((MapCardVM)m));
+
 
         }
 
@@ -1006,5 +1011,259 @@ namespace map_creator.ViewModels
                 card.IsSaved = false;
             }
         }
+
+        private void OpenMapInEditor(MapCardVM card)
+        {
+            if (card == null) return;
+
+            try
+            {
+                LoadFromJsonStrings(card.MapsJson, card.ObjectJson);
+
+                // nazwa/desc z bazy (jeśli chcesz)
+                MapName = card.NameMap;
+                MapDescription = card.Desc ?? "";
+
+                // przełącz widok na edytor
+                TopTab = "editor";
+
+                // odśwież canvas
+                RequestRender?.Invoke();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Nie udało się wczytać mapy: " + ex.Message);
+            }
+        }
+
+        private void LoadFromJsonStrings(string mapsJson, string objectsJson)
+        {
+            if (string.IsNullOrWhiteSpace(mapsJson))
+                throw new Exception("MapsJson jest pusty.");
+
+            // ==========================
+            // 1) TILE LAYER (Tiled JSON)
+            // ==========================
+            using (var doc = JsonDocument.Parse(mapsJson))
+            {
+                var root = doc.RootElement;
+
+                int w = root.GetProperty("width").GetInt32();
+                int h = root.GetProperty("height").GetInt32();
+
+                Rows = h;
+                Columns = w;
+
+                _grid = new int[Rows, Columns];
+                _objectsGrid = new ObjectInstance[Rows, Columns];
+
+                // layers[0].data
+                var layers = root.GetProperty("layers");
+                if (layers.GetArrayLength() == 0)
+                    throw new Exception("Brak layers w MapsJson.");
+
+                var data = layers[0].GetProperty("data");
+                if (data.ValueKind != JsonValueKind.Array)
+                    throw new Exception("layers[0].data nie jest tablicą.");
+
+                int i = 0;
+                for (int r = 0; r < Rows; r++)
+                {
+                    for (int c = 0; c < Columns; c++)
+                    {
+                        if (i >= data.GetArrayLength())
+                            _grid[r, c] = 0;
+                        else
+                            _grid[r, c] = data[i].GetInt32();
+                        i++;
+                    }
+                }
+            }
+
+            // ==========================
+            // 2) OBJECTS JSON
+            // ==========================
+            if (string.IsNullOrWhiteSpace(objectsJson))
+            {
+                // brak obiektów – tylko kafelki
+                return;
+            }
+
+            using (var docObj = JsonDocument.Parse(objectsJson))
+            {
+                var root = docObj.RootElement;
+
+                int mapHeight = Rows * CellSize;
+
+                // helper: world (x,y) -> (r,c,offsetX)
+                (int r, int c, double offsetX) WorldToCell(double x, double y)
+                {
+                    // w Twoim formacie y rośnie do góry (jak w JSX)
+                    // r liczymy od góry w WPF
+                    double yTop = mapHeight - y;              // odwrócenie osi
+                    int r = (int)Math.Floor(yTop / CellSize);
+                    int c = (int)Math.Floor(x / CellSize);
+
+                    r = Math.Max(0, Math.Min(Rows - 1, r));
+                    c = Math.Max(0, Math.Min(Columns - 1, c));
+
+                    double tileCenterX = c * CellSize + CellSize / 2.0;
+                    double offsetX = x - tileCenterX;
+
+                    // opcjonalnie przytnij do sensownego zakresu
+                    if (offsetX < -CellSize / 2.0) offsetX = -CellSize / 2.0;
+                    if (offsetX > CellSize / 2.0) offsetX = CellSize / 2.0;
+
+                    return (r, c, offsetX);
+                }
+
+                string TypeToKey(string type)
+                {
+                    return type switch
+                    {
+                        "Player" => "player",
+                        "Finish" => "finish",
+                        "Sharkman" => "sharkman",
+                        "Crabby" => "crabby",
+                        "GoldenSkull" => "goldenSkull",
+                        "HealthPotion" => "healthPotion",
+                        "Diamond" => "diamond",
+                        "GoldCoin" => "goldCoin",
+                        "SilverCoin" => "silverCoin",
+                        "Cannon" => "cannon",
+                        "Spikes" => "spikes",
+                        _ => type.Length > 0 ? char.ToLower(type[0]) + type.Substring(1) : type
+                    };
+                }
+
+                string CategoryFromType(string type)
+                {
+                    return type switch
+                    {
+                        "Player" or "Finish" => "special",
+                        "Cannon" or "Spikes" => "objects",
+                        "Sharkman" or "Crabby" => "enemies",
+                        _ => "pickables",
+                    };
+                }
+
+                // ---- player
+                if (root.TryGetProperty("player", out var playerEl) && playerEl.ValueKind == JsonValueKind.Object)
+                {
+                    double x = playerEl.GetProperty("x").GetDouble();
+                    double y = playerEl.GetProperty("y").GetDouble();
+                    var (r, c, offX) = seeCell(x, y);
+                    _objectsGrid[r, c] = new ObjectInstance
+                    {
+                        Key = "player",
+                        Type = "Player",
+                        Category = "special",
+                        OffsetX = offX
+                    };
+                }
+
+                // ---- finish
+                if (root.TryGetProperty("finish", out var finishEl) && finishEl.ValueKind == JsonValueKind.Object)
+                {
+                    double x = finishEl.GetProperty("x").GetDouble();
+                    double y = finishEl.GetProperty("y").GetDouble();
+                    var (r, c, offX) = seeCell(x, y);
+                    _objectsGrid[r, c] = new ObjectInstance
+                    {
+                        Key = "finish",
+                        Type = "Finish",
+                        Category = "special",
+                        OffsetX = offX
+                    };
+                }
+
+                // helper local func (C# requires defined before use if you want; easiest: use a lambda)
+                (int r, int c, double offsetX) seeCell(double x, double y) => WorldToCell(x, y);
+
+                // ---- enemies[]
+                if (root.TryGetProperty("enemies", out var enemiesEl) && enemiesEl.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var e in enemiesEl.EnumerateArray())
+                    {
+                        if (e.ValueKind != JsonValueKind.Object) continue;
+
+                        string type = e.GetProperty("type").GetString() ?? "";
+                        double x = e.GetProperty("x").GetDouble();
+                        double y = e.GetProperty("y").GetDouble();
+
+                        var (r, c, offX) = seeCell(x, y);
+
+                        int? patrol = null;
+                        if (e.TryGetProperty("patrol_distance", out var pdEl) && pdEl.ValueKind == JsonValueKind.Number)
+                            patrol = pdEl.GetInt32();
+
+                        _objectsGrid[r, c] = new ObjectInstance
+                        {
+                            Key = TypeToKey(type),
+                            Type = type,
+                            Category = CategoryFromType(type),
+                            OffsetX = offX,
+                            PatrolDistance = patrol
+                        };
+                    }
+                }
+
+                // ---- pickables[]
+                if (root.TryGetProperty("pickables", out var pickEl) && pickEl.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var p in pickEl.EnumerateArray())
+                    {
+                        if (p.ValueKind != JsonValueKind.Object) continue;
+
+                        string type = p.GetProperty("type").GetString() ?? "";
+                        double x = p.GetProperty("x").GetDouble();
+                        double y = p.GetProperty("y").GetDouble();
+
+                        var (r, c, offX) = seeCell(x, y);
+
+                        _objectsGrid[r, c] = new ObjectInstance
+                        {
+                            Key = TypeToKey(type),
+                            Type = type,
+                            Category = "pickables",
+                            OffsetX = offX
+                        };
+                    }
+                }
+
+                // ---- objects[]
+                if (root.TryGetProperty("objects", out var objsEl) && objsEl.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var o in objsEl.EnumerateArray())
+                    {
+                        if (o.ValueKind != JsonValueKind.Object) continue;
+
+                        string type = o.GetProperty("type").GetString() ?? "";
+                        double x = o.GetProperty("x").GetDouble();
+                        double y = o.GetProperty("y").GetDouble();
+
+                        var (r, c, offX) = seeCell(x, y);
+
+                        string dir = null;
+                        if (o.TryGetProperty("direction", out var dirEl) && dirEl.ValueKind == JsonValueKind.String)
+                            dir = dirEl.GetString();
+
+                        _objectsGrid[r, c] = new ObjectInstance
+                        {
+                            Key = TypeToKey(type),
+                            Type = type,
+                            Category = "objects",
+                            OffsetX = offX,
+                            Direction = dir
+                        };
+                    }
+                }
+            }
+
+            // po wczytaniu odśwież UI (XAML bindingi)
+            OnPropertyChanged(nameof(Rows));
+            OnPropertyChanged(nameof(Columns));
+        }
+
     }
 }
