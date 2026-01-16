@@ -369,28 +369,45 @@ namespace map_creator.ViewModels
             return;
         }
 
-        var dbPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "BazaDanych.db");
-        var mapService = new MapService(dbPath);
+            var dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "BazaDanych.db");
+            var service = new MapEfService(dbPath);
 
-        var record = new MapRecord
-        {
-            // Id = 0 => insert (jeśli chcesz update, trzymaj Id mapy w VM)
-            Id = 0,
-            NameMap = MapName,
-            UserId = UserSession.CurrentUser.Id,  // TEXT
-            Date = DateTime.UtcNow.ToString("o"),
-            Plus = 0,
-            Minus = 0,
-            MapsJson = mapsJson,
-            ObjectJson = objectsJson,
-            Desc = MapDescription
-        };
+            int newId = service.InsertMap(
+                UserSession.CurrentUser.Id,
+                MapName,
+                MapDescription,
+                mapsJson,
+                objectsJson
+            );
 
-        int newId = mapService.Save(record);
-        MessageBox.Show($"Zapisano mapę");
-    }
+            MessageBox.Show($"Zapisano mapę w bazie. Id={newId}");
 
-    public void PlaceObjectAt(double worldX, double worldY)
+
+            //var dbPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "BazaDanych.db");
+
+
+            //    var record = new MapRecord
+            //{
+            //    // Id = 0 => insert (jeśli chcesz update, trzymaj Id mapy w VM)
+            //    Id = 0,
+            //    NameMap = MapName,
+            //    UserId = UserSession.CurrentUser.Id,  // TEXT
+            //    Date = DateTime.UtcNow.ToString("o"),
+            //    Plus = 0,
+            //    Minus = 0,
+            //    MapsJson = mapsJson,
+            //    ObjectJson = objectsJson,
+            //    Desc = MapDescription
+            //};
+
+            //    var mapService = new MapService(dbPath);
+            //    int newId = mapService.Save(record);
+
+
+            //    MessageBox.Show($"Zapisano mapę");
+        }
+
+        public void PlaceObjectAt(double worldX, double worldY)
         {
             if (SelectedObject == null) return;
 
