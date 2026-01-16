@@ -290,6 +290,18 @@ namespace map_creator.ViewModels
 
             ShowTilesCommand = new RelayCommand(_ => IsObjectsMode = false);
             ShowObjectsCommand = new RelayCommand(_ => IsObjectsMode = true);
+
+            ShowEditorTabCommand = new RelayCommand(_ => TopTab = "editor");
+            ShowBrowseTabCommand = new RelayCommand(_ =>
+            {
+                TopTab = "browse";
+                RefreshBrowseMaps();
+            });
+
+            RefreshBrowseMapsCommand = new RelayCommand(_ => RefreshBrowseMaps());
+            DownloadMapCommand = new RelayCommand(m => DownloadMap((MapCardVM)m));
+            ToggleSaveMapCommand = new RelayCommand(m => ToggleSaveMap((MapCardVM)m));
+
         }
 
         // ===== LOGIKA MAPY =====
@@ -907,6 +919,91 @@ namespace map_creator.ViewModels
                 _grid = new int[Rows, Columns];
                 _objectsGrid = new ObjectInstance[Rows, Columns];
                 RequestRender?.Invoke();
+            }
+        }
+        // ===== TOP TABS: Kreator / Przeglądaj =====
+        private string _topTab = "editor"; // "editor" | "browse"
+        public string TopTab
+        {
+            get => _topTab;
+            set
+            {
+                if (_topTab == value) return;
+                _topTab = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsEditorTab));
+                OnPropertyChanged(nameof(IsBrowseTab));
+            }
+        }
+
+        public bool IsEditorTab => TopTab == "editor";
+        public bool IsBrowseTab => TopTab == "browse";
+
+        public ICommand ShowEditorTabCommand { get; }
+        public ICommand ShowBrowseTabCommand { get; }
+
+        // ===== PRZEGLĄD MAP =====
+        public ObservableCollection<MapCardVM> BrowseMaps { get; } = new();
+
+        public ICommand RefreshBrowseMapsCommand { get; }
+        public ICommand DownloadMapCommand { get; }
+        public ICommand ToggleSaveMapCommand { get; }
+
+        private string DbPath => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "BazaDanych.db");
+
+        private void RefreshBrowseMaps()
+        {
+            BrowseMaps.Clear();
+
+            var svc = new MapService(DbPath);
+            var rows = svc.GetAllMaps();
+
+            foreach (var row in rows)
+            {
+                var card = new MapCardVM(row);
+
+                if (UserSession.IsLoggedIn)
+                    card.IsSaved = svc.IsSaved(UserSession.CurrentUser.Id, card.Id);
+                else
+                    card.IsSaved = false;
+
+                BrowseMaps.Add(card);
+            }
+        }
+
+        private void DownloadMap(MapCardVM card)
+        {
+            if (card == null) return;
+
+            var desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+
+            File.WriteAllText(Path.Combine(desktop, $"{card.NameMap}.json"), card.MapsJson ?? "");
+            File.WriteAllText(Path.Combine(desktop, $"{card.NameMap}_objects.json"), card.ObjectJson ?? "");
+
+            MessageBox.Show("Pobrano pliki na pulpit.");
+        }
+
+        private void ToggleSaveMap(MapCardVM card)
+        {
+            if (card == null) return;
+
+            if (!UserSession.IsLoggedIn)
+            {
+                MessageBox.Show("Musisz być zalogowany, żeby zapisywać mapy.");
+                return;
+            }
+
+            var svc = new MapService(DbPath);
+
+            if (!card.IsSaved)
+            {
+                svc.SaveToUser(UserSession.CurrentUser.Id, card.Id);
+                card.IsSaved = true;
+            }
+            else
+            {
+                svc.UnsaveFromUser(UserSession.CurrentUser.Id, card.Id);
+                card.IsSaved = false;
             }
         }
     }
