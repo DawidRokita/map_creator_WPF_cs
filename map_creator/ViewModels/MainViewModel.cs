@@ -1,4 +1,6 @@
 ﻿using map_creator.Models;
+using map_creator.Services;
+using map_creator.Session;
 using map_creator.Utilities;
 using System;
 using System.Collections.Generic;
@@ -10,6 +12,7 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
+
 
 namespace map_creator.ViewModels
 {
@@ -104,7 +107,6 @@ namespace map_creator.ViewModels
                 OnPropertyChanged(); // SelectedObject
                 OnPropertyChanged(nameof(SelectedObjectKey));
 
-                // 🔥 TEGO BRAKOWAŁO
                 OnPropertyChanged(nameof(IsSharkmanSelected));
                 OnPropertyChanged(nameof(IsCannonSelected));
 
@@ -152,7 +154,7 @@ namespace map_creator.ViewModels
         }
 
 
-        // ✅ XAML trigger porównuje Key z SelectedObjectKey
+        // XAML trigger porównuje Key z SelectedObjectKey
         public string SelectedObjectKey => SelectedObject?.Key;
 
         private int _defaultSharkmanPatrolDistance = 100;
@@ -280,7 +282,7 @@ namespace map_creator.ViewModels
                 SelectedObject = null;
             });
 
-            // ✅ wybór obiektu z menu
+            // wybór obiektu z menu
             SelectObjectCommand = new RelayCommand(o =>
             {
                 SelectedObject = (ObjectDef)o;
@@ -341,7 +343,37 @@ namespace map_creator.ViewModels
 
 
 
-        public void PlaceObjectAt(double worldX, double worldY)
+
+    private void SaveToDatabase(string mapsJson, string objectsJson)
+    {
+        if (!UserSession.IsLoggedIn)
+        {
+            MessageBox.Show("Musisz być zalogowany, żeby zapisać mapę do bazy.");
+            return;
+        }
+
+        var dbPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "BazaDanych.db");
+        var mapService = new MapService(dbPath);
+
+        var record = new MapRecord
+        {
+            // Id = 0 => insert (jeśli chcesz update, trzymaj Id mapy w VM)
+            Id = 0,
+            NameMap = MapName,
+            UserId = UserSession.CurrentUser.Id,  // TEXT
+            Date = DateTime.UtcNow.ToString("o"),
+            Plus = 0,
+            Minus = 0,
+            MapsJson = mapsJson,
+            ObjectJson = objectsJson,
+            Desc = MapDescription
+        };
+
+        int newId = mapService.Save(record);
+        MessageBox.Show($"Zapisano mapę");
+    }
+
+    public void PlaceObjectAt(double worldX, double worldY)
         {
             if (SelectedObject == null) return;
 
@@ -623,11 +655,13 @@ namespace map_creator.ViewModels
         // ===== ZAPIS =====
         private void SaveAll()
         {
-            SaveMapJson();
-            SaveObjectsJson();
+            string mapsJson = SaveMapJson();
+            string objectsJson = SaveObjectsJson();
+
+            SaveToDatabase(mapsJson, objectsJson);
         }
 
-        private void SaveMapJson()
+        private string SaveMapJson()
         {
             var sb = new StringBuilder();
 
@@ -688,13 +722,15 @@ namespace map_creator.ViewModels
                 ),
                 sb.ToString()
             );
+
+            return sb.ToString();
         }
 
 
 
 
 
-        private void SaveObjectsJson()
+        private string SaveObjectsJson()
         {
             var sb = new StringBuilder();
             int mapHeight = Rows * CellSize;
@@ -753,6 +789,8 @@ namespace map_creator.ViewModels
                 ),
                 sb.ToString()
             );
+
+            return sb.ToString();
         }
 
         private void WriteObjects(StringBuilder sb, string category, int mapHeight)
